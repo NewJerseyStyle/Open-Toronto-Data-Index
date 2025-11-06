@@ -2,7 +2,7 @@ import os
 import time
 import requests
 import duckdb
-import markitdown
+from markdownify import markdownify as md
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
@@ -37,9 +37,7 @@ def fetch_and_process_page(url):
         try:
             page.goto(url, wait_until="networkidle")
             content = page.content()
-            # Use markitdown to convert HTML to Markdown
-            markdown_content = markitdown.convert(content)
-            return markdown_content
+            return md(content)
         except Exception as e:
             print(f"Error fetching page {url}: {e}")
             return None
