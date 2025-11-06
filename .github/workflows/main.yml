@@ -30,35 +30,11 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add opendata.sql
+          git add opendata.parquet
           if git diff --staged --quiet; then
             echo "no_changes=true" >> $GITHUB_OUTPUT
           else
-            git commit -m 'Update opendata.sql'
+            git commit -m 'Update opendata.parquet'
             git push
             echo "no_changes=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Create Release
-        if: steps.commit.outputs.no_changes == 'false'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.run_number }}
-          release_name: Data Index - ${{ github.run_number }}
-          body: |-
-            Automated data index update.
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Asset
-        if: steps.commit.outputs.no_changes == 'false'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./opendata.sql
-          asset_name: opendata.sql
-          asset_content_type: application/sql
