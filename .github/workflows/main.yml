@@ -33,14 +33,14 @@ jobs:
       - name: Build index
         run: python build_index.py
         
-      # - name: Set flag for release
-      #   id: releaseflag
-      #   run: |
-      #     if git diff --staged --quiet; then
-      #       echo "no_changes=true" >> $GITHUB_OUTPUT
-      #     else
-      #       echo "no_changes=false" >> $GITHUB_OUTPUT
-      #     fi
+      - name: Set flag for release
+        id: releaseflag
+        run: |
+          if git diff --staged --quiet; then
+            echo "no_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "no_changes=false" >> $GITHUB_OUTPUT
+          fi
   
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -48,26 +48,14 @@ jobs:
           commit_message: "Automated update: Update opendata.db"
           file_pattern: 'opendata.db'
 
-      # - name: Create Release
-      #   if: steps.releaseflag.outputs.no_changes == 'false'
-      #   uses: actions/create-release@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     tag_name: v${{ github.run_number }}
-      #     release_name: Data Index - v${{ github.run_number }}
-      #     body: |-
-      #       Automated data index update.
-      #     draft: false
-      #     prerelease: false
-
-      # - name: Upload Release Asset
-      #   if: steps.commit.outputs.no_changes == 'false'
-      #   uses: actions/upload-release-asset@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-      #     asset_path: ./opendata.parquet
-      #     asset_name: opendata.parquet
-      #     asset_content_type: application/parquet
+      - name: Create Release
+        if: steps.releaseflag.outputs.no_changes == 'false'
+        uses: softprops/action-gh-release@v2
+        # env:
+        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: opendata.parquet
+          body: |-
+            Automated data index update.
+          name: Data Index - v${{ github.run_number }}
+          tag_name: v${{ github.run_number }}
