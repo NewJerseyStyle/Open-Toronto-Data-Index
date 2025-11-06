@@ -196,54 +196,10 @@ The Parquet file contains the following columns:
 
 ---
 
-## 🔧 Advanced Usage
-
-### Download for Offline Use
-
-```python
-import requests
-
-url = "https://github.com/.../opendata.parquet"
-response = requests.get(url)
-
-with open("toronto_index.parquet", "wb") as f:
-    f.write(response.content)
-
-# Now query locally
-import duckdb
-con = duckdb.connect()
-df = con.execute("SELECT * FROM 'toronto_index.parquet'").df()
-```
-
-### Combine with Pandas
-
-```python
-import duckdb
-import pandas as pd
-
-con = duckdb.connect()
-con.execute("INSTALL httpfs; LOAD httpfs;")
-
-# Get data as pandas DataFrame
-df = con.execute("""
-    SELECT * FROM read_parquet('https://github.com/.../opendata.parquet')
-    WHERE category = 'Transportation'
-""").df()
-
-# Use pandas for analysis
-print(df['summary'].str.contains('TTC').sum())
-print(df.groupby('category').size())
-```
-
-## 🤝 Contributing
-
-Found a bug or have a feature request? Please open an issue and make a pull request!
-
----
-
 ## 📜 License
 
 This index is derived from [Toronto Open Data](https://open.toronto.ca/), which is licensed under the [Open Government Licence – Toronto](https://open.toronto.ca/open-data-license/).
+This repository for the Python Script itself is under [MIT license](LICENSE).
 
 ---
 
