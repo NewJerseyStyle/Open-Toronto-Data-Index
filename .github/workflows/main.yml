@@ -42,8 +42,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.run_number }}
-          release_name: Data Index - ${{ github.run_number }}
+          tag_name: v${{ github.run_number }}
+          release_name: Data Index - v${{ github.run_number }}
           body: |-
             Automated data index update.
           draft: false
@@ -56,9 +56,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./opendata.sql
-          asset_name: opendata.sql
-          asset_content_type: application/sql
-            git push
-            echo "no_changes=false" >> $GITHUB_OUTPUT
-          fi
+          asset_path: ./opendata.parquet
+          asset_name: opendata.parquet
+          asset_content_type: application/parquet
