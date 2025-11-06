@@ -100,7 +100,7 @@ if __name__ == "__main__":
             time.sleep(delay)
 
     # Export to PARQUET
-    con.execute(f"EXPORT DATABASE '.' (FORMAT PARQUET, ENCODING 'UTF-8');")
+    con.execute(f"EXPORT DATABASE '.' (FORMAT PARQUET);")
 
     con.close()
 
