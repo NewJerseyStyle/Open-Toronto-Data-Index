@@ -35,6 +35,8 @@ jobs:
             echo "no_changes=true" >> $GITHUB_OUTPUT
           else
             git commit -m 'Update opendata.db'
+            git push
+            echo "no_changes=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Create Release
