@@ -11,6 +11,6 @@ ENV/
 env/
 
 # DuckDB
-*.db
+# *.db # to keep track of index
 *.db.wal
 
