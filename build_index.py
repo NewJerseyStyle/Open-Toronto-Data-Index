@@ -16,7 +16,7 @@ def get_sitemap_urls():
     try:
         response = requests.get(SITEMAP_URL)
         response.raise_for_status()
-        xml = response.content
+        xml = response.content.decode('utf-8')
         xml_lines = xml.splitlines()
         xml_lines = [line for line in xml_lines if '<?xml' not in line]
         xml = '\n'.join(xml_lines)
