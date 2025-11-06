@@ -3,3 +3,4 @@ beautifulsoup4
 markitdown
 duckdb
 playwright
+lxml
