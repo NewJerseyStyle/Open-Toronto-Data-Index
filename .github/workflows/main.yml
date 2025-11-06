@@ -1,0 +1,64 @@
+
+name: Build Open Data Index
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly at midnight on Sunday
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install
+
+      - name: Build index
+        run: python build_index.py
+
+      - name: Commit and push if there are changes
+        id: commit
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add opendata.sql
+          if git diff --staged --quiet; then
+            echo "no_changes=true" >> $GITHUB_OUTPUT
+          else
+            git commit -m 'Update opendata.sql'
+            git push
+            echo "no_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        if: steps.commit.outputs.no_changes == 'false'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.run_number }}
+          release_name: Data Index - ${{ github.run_number }}
+          body: |-
+            Automated data index update.
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        if: steps.commit.outputs.no_changes == 'false'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./opendata.sql
+          asset_name: opendata.sql
+          asset_content_type: application/sql
