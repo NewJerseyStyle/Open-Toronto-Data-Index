@@ -105,10 +105,10 @@ if __name__ == "__main__":
     con.close()
 
     # Rename the exported file
-    if os.path.exists('export.parquet'):
+    if os.path.exists('pages.parquet'):
         if os.path.exists(SQL_FILE):
             os.remove(SQL_FILE)
-        os.rename('export.parquet', SQL_FILE)
+        os.rename('pages.parquet', SQL_FILE)
 
 
 if __name__ == "__main__":
