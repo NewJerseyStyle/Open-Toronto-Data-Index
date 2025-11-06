@@ -77,7 +77,7 @@ def build_index():
             time.sleep(delay)
 
     # Export to PARQUET
-    con.execute(f"EXPORT DATABASE '.' (FORMAT PARQUET, ENCODING 'UTF-8');")
+    con.execute(f"EXPORT DATABASE '.' (FORMAT PARQUET);")
 
     con.close()
 
@@ -86,29 +86,6 @@ def build_index():
         if os.path.exists(SQL_FILE):
             os.remove(SQL_FILE)
         os.rename('export.parquet', SQL_FILE)
-
-
-if __name__ == "__main__":
-    build_index()
-
-    for i, url in enumerate(urls):
-        print(f"Processing {url}...")
-        summary = fetch_and_process_page(url)
-        if summary:
-            con.execute("INSERT INTO pages (url, summary) VALUES (?, ?)", (url, summary))
-        if i < len(urls) - 1:
-            time.sleep(delay)
-
-    # Export to PARQUET
-    con.execute(f"EXPORT DATABASE '.' (FORMAT PARQUET);")
-
-    con.close()
-
-    # Rename the exported file
-    if os.path.exists('pages.parquet'):
-        if os.path.exists(SQL_FILE):
-            os.remove(SQL_FILE)
-        os.rename('pages.parquet', SQL_FILE)
 
 
 if __name__ == "__main__":
