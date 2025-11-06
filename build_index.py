@@ -52,11 +52,10 @@ def build_index():
         return
 
     con = duckdb.connect(DB_FILE)
-    if os.path.exists(DB_FILE):
+    try:
         existing_urls = con.execute("SELECT url FROM pages").fetchall()
         existing_urls = [url[0] for url in existing_urls]
-        con.close()
-    else:
+    except:
         existing_urls = []
         con.execute("""
             CREATE TABLE pages (
