@@ -39,11 +39,7 @@ print(result)
 ```
 
 **DuckDB CLI:**
-```bash
-# Install DuckDB: https://duckdb.org/docs/installation/
-
-duckdb
-```
+> Install DuckDB: https://duckdb.org/docs/installation/
 
 ```sql
 -- In DuckDB shell
