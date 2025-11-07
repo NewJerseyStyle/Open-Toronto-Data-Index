@@ -70,6 +70,8 @@ def build_index():
             print(f"Skipping {url}...")
             continue
         print(f"Processing {url}...")
+        with open('new_release.txt', 'w') as f:
+            f.write('true')
         summary = fetch_and_process_page(url)
         if summary:
             con.execute("INSERT INTO pages (url, summary) VALUES (?, ?)", (url, summary))
@@ -83,8 +85,6 @@ def build_index():
 
     # Rename the exported file
     if os.path.exists('export.parquet'):
-        if os.path.exists(SQL_FILE):
-            os.remove(SQL_FILE)
         os.rename('export.parquet', SQL_FILE)
 
 
