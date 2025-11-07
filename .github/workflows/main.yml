@@ -36,7 +36,7 @@ jobs:
       - name: Set flag for release
         id: releaseflag
         run: |
-          if git diff --staged --quiet; then
+          if [ -e "new_release.txt" ]; then
             echo "no_changes=true" >> $GITHUB_OUTPUT
           else
             echo "no_changes=false" >> $GITHUB_OUTPUT
