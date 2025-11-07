@@ -199,6 +199,11 @@ This repository for the Python Script itself is under [MIT license](LICENSE).
 
 ---
 
+## 🧑‍💻 Contribution
+Feel free to fork and edit the `build_index.py` file add meta data form each records and make all kinds of changes to make better dataset and make pull request with a migration plan.
+
+---
+
 ## 🔗 Related Projects
 
 - [Toronto Open Data Portal](https://open.toronto.ca/)
