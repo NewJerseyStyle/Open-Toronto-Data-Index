@@ -47,7 +47,7 @@ INSTALL httpfs;
 LOAD httpfs;
 
 -- Query the index
-SELECT title, summary, url 
+SELECT summary, url 
 FROM read_parquet('https://github.com/NewJerseyStyle/Open-Toronto-Data-Index/releases/latest/download/opendata.parquet')
 WHERE summary LIKE '%transit%'
 LIMIT 5;
@@ -81,7 +81,7 @@ Query the index directly in your browser with zero setup!
         
         // Query the index
         const result = await conn.query(`
-            SELECT title, summary, url 
+            SELECT summary, url 
             FROM read_parquet('https://github.com/NewJerseyStyle/Open-Toronto-Data-Index/releases/latest/download/opendata.parquet')
             WHERE summary LIKE '%bike%'
             LIMIT 10
@@ -92,7 +92,7 @@ Query the index directly in your browser with zero setup!
         // Display results
         document.getElementById('results').innerHTML = 
             result.toArray().map(row => 
-                `<li><strong>${row.title}</strong>: ${row.summary} 
+                `<li>${row.summary} 
                  <br><a href="${row.url}">View Dataset</a></li>`
             ).join('');
     </script>
