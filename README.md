@@ -4,9 +4,11 @@ A searchable index of all datasets from the [Toronto Open Data Portal](https://o
 
 ## 📋 What's This?
 
-This repository maintains an up-to-date index of Toronto's open datasets with:
+> Foundation of Huggingface Space [TorontoOpenDataQA](https://huggingface.co/spaces/npc0/TorontoOpenDataQA/)
+
+This repository maintains an index of Toronto's open datasets with weekly update:
 - **Dataset URLs**: Direct links to download pages
-- **Summaries**: Descriptions of what each dataset contains
+- **Markdowns**: Descriptions of what each dataset contains converting the page of dataset into markdown format
 - **Parquet Format**: Efficient, columnar storage for fast queries
 
 Perfect for data scientists, and developers who want to quickly find relevant Toronto datasets with [DuckDB](https://github.com/duckdb/duckdb) without manually browsing the portal.
