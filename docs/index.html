@@ -15,6 +15,16 @@
         .animate-pulse-slow {
             animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+        pre code {
+            display: block;
+            overflow-x: auto;
+            padding: 0.5rem;
+            background: #f3f4f6;
+            border-radius: 0.375rem;
+        }
+        .dark pre code {
+            background: #1f2937;
+        }
     </style>
 </head>
 <body class="h-full bg-gray-50 dark:bg-gray-900">
@@ -64,7 +74,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Toronto Open Data QA</h1>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">AI-powered analysis of Toronto's open datasets</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">AI-powered analysis with full transparency</p>
                     </div>
                     <div class="flex gap-2">
                         <button id="changeKeyBtn" class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -126,8 +136,8 @@
                 </div>
             </div>
 
-            <!-- Two Column Layout -->
-            <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
+            <!-- Three Column Layout -->
+            <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
                 <!-- Left: Answer -->
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 overflow-auto">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Answer</h2>
@@ -136,11 +146,41 @@
                     </div>
                 </div>
 
-                <!-- Right: Process Log -->
+                <!-- Middle: Dataset Selection & Loading -->
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 overflow-auto">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Process Log</h2>
-                    <div id="processLog" class="space-y-3 text-sm">
-                        <p class="text-gray-600 dark:text-gray-400 italic">Process steps will appear here...</p>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Datasets</h2>
+                    
+                    <!-- Selected Datasets -->
+                    <div id="selectedDatasetsSection" class="mb-6 hidden">
+                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Selected for Analysis</h3>
+                        <div id="selectedDatasets" class="space-y-2"></div>
+                    </div>
+
+                    <!-- Loaded Datasets -->
+                    <div id="loadedDatasetsSection" class="mb-6 hidden">
+                        <h3 class="text-sm font-semibold text-green-700 dark:text-green-300 mb-2">Successfully Loaded</h3>
+                        <div id="loadedDatasets" class="space-y-2"></div>
+                    </div>
+
+                    <!-- Failed Datasets -->
+                    <div id="failedDatasetsSection" class="mb-6 hidden">
+                        <h3 class="text-sm font-semibold text-red-700 dark:text-red-300 mb-2">Failed to Load</h3>
+                        <div id="failedDatasets" class="space-y-2"></div>
+                    </div>
+
+                    <p id="datasetsPlaceholder" class="text-sm text-gray-600 dark:text-gray-400 italic">Dataset information will appear here...</p>
+                </div>
+
+                <!-- Right: SQL Queries & Results -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 overflow-auto">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        Queries & Results
+                        <button id="copyAllBtn" class="ml-2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 hidden">
+                            Copy All
+                        </button>
+                    </h2>
+                    <div id="queriesArea" class="space-y-4">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 italic">SQL queries and results will appear here...</p>
                     </div>
                 </div>
             </div>
@@ -157,7 +197,10 @@
             db: null,
             apiKey: null,
             isProcessing: false,
-            loadedDatasets: []
+            selectedDatasets: [],
+            loadedDatasets: [],
+            failedDatasets: [],
+            queries: []
         };
 
         // === API Key Management ===
@@ -206,7 +249,6 @@
         async function callClaude(prompt, systemPrompt = '', useSystemPromptFile = null) {
             if (!state.apiKey) throw new Error('No API key');
 
-            // If system prompt file specified, fetch it
             let finalSystemPrompt = systemPrompt;
             if (useSystemPromptFile) {
                 try {
@@ -223,11 +265,10 @@
                 method: "POST",
                 headers: {
                     "x-api-key": state.apiKey,
-                    "anthropic-version": "2023-06-01",
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    model: "claude-sonnet-4-20250514",
+                    model: "claude-sonnet-4-5",
                     max_tokens: 4000,
                     messages: [{ role: "user", content: prompt }],
                     ...(finalSystemPrompt && { system: finalSystemPrompt })
@@ -264,16 +305,11 @@
                         ATTACH 'https://cdn.jsdelivr.net/gh/NewJerseyStyle/Open-Toronto-Data-Index/opendata.db' AS toronto_db;
                         USE toronto_db;
                     `);
-                    
-                    // Check actual schema
-                    const schemaResult = await conn.query("PRAGMA table_info(pages)");
-                    console.log('Index schema:', schemaResult.toArray());
                 } finally {
                     await conn.close();
                 }
                 
                 hideStatus();
-                addLog('✓ Database ready', 'success');
                 updateAnswer('**Ready!** Ask a question about Toronto open data.');
             } catch (error) {
                 console.error('Init error:', error);
@@ -293,29 +329,20 @@
 
         // === Docling Conversion ===
         async function convertWithDocling(fileUrl) {
-            addLog(`Converting file with Docling: ${fileUrl}`, 'info');
-            
             try {
-                // POST request to start conversion
                 const postResponse = await fetch('https://yasserrmd-doclingconverter.hf.space/gradio_api/call/convert_document', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        data: [
-                            { path: fileUrl },
-                            "Markdown"
-                        ]
+                        data: [{ path: fileUrl }, "Markdown"]
                     })
                 });
 
                 const postData = await postResponse.json();
                 const eventId = postData.event_id;
                 
-                if (!eventId) throw new Error('No event ID returned from Docling');
+                if (!eventId) throw new Error('No event ID returned');
 
-                addLog(`Waiting for conversion (Event ID: ${eventId})...`, 'info');
-
-                // GET request to fetch result
                 const getResponse = await fetch(`https://yasserrmd-doclingconverter.hf.space/gradio_api/call/convert_document/${eventId}`);
                 
                 const reader = getResponse.body.getReader();
@@ -334,33 +361,26 @@
                             try {
                                 const data = JSON.parse(line.slice(6));
                                 if (data[0]) result = data[0];
-                            } catch (e) {
-                                // Ignore parse errors
-                            }
+                            } catch (e) {}
                         }
                     }
                 }
 
                 if (!result) throw new Error('No result from Docling');
-                
-                addLog('✓ File converted successfully', 'success');
                 return result;
             } catch (error) {
-                addLog(`✗ Docling conversion failed: ${error.message}`, 'error');
-                throw error;
+                throw new Error(`Docling conversion failed: ${error.message}`);
             }
         }
 
         // === Helper Functions ===
         function cleanMarkdownSummary(markdown) {
-            // Remove common repeated sections
             const lines = markdown.split('\n');
             const seen = new Set();
             const cleaned = [];
             
             for (const line of lines) {
                 const trimmed = line.trim();
-                // Skip empty lines, common headers, footers
                 if (!trimmed) continue;
                 if (trimmed.match(/^(toronto|city of toronto|open data|dataset|download|share)/i)) continue;
                 if (seen.has(trimmed)) continue;
@@ -373,7 +393,6 @@
         }
 
         function extractDownloadLinks(markdown) {
-            // Extract [Download (...)] links
             const links = [];
             const regex = /\[Download\s+\([^\)]+\)\]\((https?:\/\/[^\)]+)\)/gi;
             let match;
@@ -407,30 +426,111 @@
             document.getElementById('answerArea').innerHTML = marked.parse(text);
         }
 
-        function addLog(message, type = 'info') {
-            const logArea = document.getElementById('processLog');
-            const colors = {
-                info: 'text-blue-700 dark:text-blue-300',
-                success: 'text-green-700 dark:text-green-300',
-                error: 'text-red-700 dark:text-red-300',
-                warning: 'text-yellow-700 dark:text-yellow-300'
-            };
+        function updateDatasetDisplay() {
+            // Selected Datasets
+            const selectedSection = document.getElementById('selectedDatasetsSection');
+            const selectedDiv = document.getElementById('selectedDatasets');
             
-            const logEntry = document.createElement('div');
-            logEntry.className = `p-2 rounded ${colors[type]} bg-gray-50 dark:bg-gray-700/50`;
-            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            
-            if (logArea.querySelector('.italic')) {
-                logArea.innerHTML = '';
+            if (state.selectedDatasets.length > 0) {
+                document.getElementById('datasetsPlaceholder').classList.add('hidden');
+                selectedSection.classList.remove('hidden');
+                selectedDiv.innerHTML = state.selectedDatasets.map(ds => `
+                    <div class="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800 text-sm">
+                        <div class="font-medium text-gray-900 dark:text-white mb-1">
+                            <a href="${ds.url}" target="_blank" class="hover:underline">${ds.url.split('/').pop()}</a>
+                        </div>
+                        <div class="text-gray-600 dark:text-gray-400 text-xs">${ds.reason}</div>
+                    </div>
+                `).join('');
             }
+
+            // Loaded Datasets
+            const loadedSection = document.getElementById('loadedDatasetsSection');
+            const loadedDiv = document.getElementById('loadedDatasets');
             
-            logArea.appendChild(logEntry);
-            logArea.scrollTop = logArea.scrollHeight;
+            if (state.loadedDatasets.length > 0) {
+                loadedSection.classList.remove('hidden');
+                loadedDiv.innerHTML = state.loadedDatasets.map(ds => `
+                    <div class="p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800 text-sm">
+                        <div class="font-medium text-gray-900 dark:text-white mb-1">
+                            ${ds.tableName} (${ds.rowCount} rows)
+                        </div>
+                        <div class="text-gray-600 dark:text-gray-400 text-xs">
+                            Source: <a href="${ds.fileUrl}" target="_blank" class="hover:underline">${ds.fileUrl.split('/').pop()}</a>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Failed Datasets
+            const failedSection = document.getElementById('failedDatasetsSection');
+            const failedDiv = document.getElementById('failedDatasets');
+            
+            if (state.failedDatasets.length > 0) {
+                failedSection.classList.remove('hidden');
+                failedDiv.innerHTML = state.failedDatasets.map(ds => `
+                    <div class="p-3 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800 text-sm">
+                        <div class="font-medium text-gray-900 dark:text-white mb-1">
+                            ${ds.fileUrl.split('/').pop()}
+                        </div>
+                        <div class="text-red-600 dark:text-red-400 text-xs">${ds.error}</div>
+                    </div>
+                `).join('');
+            }
         }
 
-        function clearLog() {
-            document.getElementById('processLog').innerHTML = '<p class="text-gray-600 dark:text-gray-400 italic">Process steps will appear here...</p>';
+        function addQuery(sql, explanation, results) {
+            state.queries.push({ sql, explanation, results });
+            
+            const queriesArea = document.getElementById('queriesArea');
+            const copyBtn = document.getElementById('copyAllBtn');
+            
+            queriesArea.querySelector('.italic')?.remove();
+            copyBtn.classList.remove('hidden');
+            
+            const queryDiv = document.createElement('div');
+            queryDiv.className = 'p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600';
+            queryDiv.innerHTML = `
+                <div class="flex items-start justify-between mb-2">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Query ${state.queries.length}</h3>
+                    <button class="copy-query-btn px-2 py-1 text-xs bg-white dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-700" data-index="${state.queries.length - 1}">
+                        Copy
+                    </button>
+                </div>
+                ${explanation ? `<p class="text-xs text-gray-600 dark:text-gray-400 mb-2 italic">${explanation}</p>` : ''}
+                <div class="mb-3">
+                    <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">SQL:</p>
+                    <pre class="text-xs bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-600 overflow-x-auto"><code>${sql}</code></pre>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Results (${results.length} rows):</p>
+                    <pre class="text-xs bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-600 overflow-x-auto max-h-48 overflow-y-auto"><code>${JSON.stringify(results.slice(0, 10), null, 2)}${results.length > 10 ? '\n... (' + (results.length - 10) + ' more rows)' : ''}</code></pre>
+                </div>
+            `;
+            
+            queriesArea.appendChild(queryDiv);
+            
+            // Add copy functionality
+            queryDiv.querySelector('.copy-query-btn').addEventListener('click', (e) => {
+                const idx = parseInt(e.target.dataset.index);
+                const q = state.queries[idx];
+                const text = `-- Query ${idx + 1}\n-- ${q.explanation || 'SQL Query'}\n${q.sql}\n\n-- Results (${q.results.length} rows)\n${JSON.stringify(q.results, null, 2)}`;
+                navigator.clipboard.writeText(text);
+                e.target.textContent = 'Copied!';
+                setTimeout(() => e.target.textContent = 'Copy', 2000);
+            });
         }
+
+        document.getElementById('copyAllBtn').addEventListener('click', () => {
+            const text = state.queries.map((q, idx) => 
+                `-- Query ${idx + 1}\n-- ${q.explanation || 'SQL Query'}\n${q.sql}\n\n-- Results (${q.results.length} rows)\n${JSON.stringify(q.results, null, 2)}`
+            ).join('\n\n' + '='.repeat(80) + '\n\n');
+            
+            navigator.clipboard.writeText(text);
+            const btn = document.getElementById('copyAllBtn');
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy All', 2000);
+        });
 
         function setProcessing(isProcessing) {
             state.isProcessing = isProcessing;
@@ -439,19 +539,34 @@
             document.getElementById('askBtn').textContent = isProcessing ? 'Processing...' : 'Ask';
         }
 
+        function resetState() {
+            state.selectedDatasets = [];
+            state.loadedDatasets = [];
+            state.failedDatasets = [];
+            state.queries = [];
+            
+            document.getElementById('datasetsPlaceholder').classList.remove('hidden');
+            document.getElementById('selectedDatasetsSection').classList.add('hidden');
+            document.getElementById('loadedDatasetsSection').classList.add('hidden');
+            document.getElementById('failedDatasetsSection').classList.add('hidden');
+            
+            document.getElementById('queriesArea').innerHTML = '<p class="text-sm text-gray-600 dark:text-gray-400 italic">SQL queries and results will appear here...</p>';
+            document.getElementById('copyAllBtn').classList.add('hidden');
+        }
+
         // === Main Query Flow ===
         document.getElementById('askBtn').addEventListener('click', async () => {
             const question = document.getElementById('questionInput').value.trim();
             if (!question || state.isProcessing) return;
 
             hideError();
-            clearLog();
+            resetState();
             setProcessing(true);
 
             try {
                 // Step 1: Query index
-                addLog('Searching Toronto Open Data index...', 'info');
-                showStatus('Searching index...');
+                showStatus('Searching Toronto Open Data index...');
+                updateAnswer('*Searching for relevant datasets...*');
                 
                 const indexPrompt = `Find datasets for: "${question}"
 
@@ -467,20 +582,17 @@ Generate SQL to find relevant datasets. Return JSON:
                 const indexResponse = await callClaude(indexPrompt, '', 'TorontoIndexQuery');
                 const indexData = JSON.parse(indexResponse.match(/\{[\s\S]*\}/)[0]);
                 
-                addLog(`Generated SQL: ${indexData.sql}`, 'info');
-                
                 const indexResults = await executeQuery(indexData.sql);
-                addLog(`Found ${indexResults.length} potential datasets`, 'success');
 
                 if (indexResults.length === 0) {
-                    updateAnswer('No relevant datasets found. Try rephrasing your question.');
+                    updateAnswer('**No relevant datasets found.** Try rephrasing your question or using different keywords.');
                     setProcessing(false);
                     hideStatus();
                     return;
                 }
 
                 // Step 2: Select best datasets
-                showStatus('Selecting relevant datasets...');
+                showStatus('Analyzing datasets...');
                 
                 const cleanedResults = indexResults.map(r => ({
                     url: r.url,
@@ -502,23 +614,28 @@ Select the most relevant datasets (max 3). Return JSON:
                 const selectionResponse = await callClaude(selectionPrompt, '', 'TorontoDataSearch');
                 const selection = JSON.parse(selectionResponse.match(/\{[\s\S]*\}/)[0]);
                 
-                addLog(`Selected ${selection.datasets.length} datasets`, 'success');
+                state.selectedDatasets = selection.datasets;
+                updateDatasetDisplay();
 
                 // Step 3: Download and convert files
                 showStatus('Downloading and converting files...');
+                updateAnswer('*Loading selected datasets...*');
                 
                 for (const dataset of selection.datasets) {
                     const summary = indexResults.find(r => r.url === dataset.url)?.summary || '';
                     const downloadLinks = extractDownloadLinks(summary);
                     
                     if (downloadLinks.length === 0) {
-                        addLog(`No download links found for ${dataset.url}`, 'warning');
+                        state.failedDatasets.push({
+                            fileUrl: dataset.url,
+                            error: 'No download links found in page'
+                        });
+                        updateDatasetDisplay();
                         continue;
                     }
 
                     // Try first download link
                     const fileUrl = downloadLinks[0];
-                    addLog(`Processing: ${fileUrl}`, 'info');
 
                     try {
                         const convertedJson = await convertWithDocling(fileUrl);
@@ -528,7 +645,7 @@ Select the most relevant datasets (max 3). Return JSON:
                         const jsonData = JSON.parse(convertedJson);
                         
                         if (!Array.isArray(jsonData) || jsonData.length === 0) {
-                            throw new Error('Invalid JSON format');
+                            throw new Error('Invalid JSON format - expected array of objects');
                         }
 
                         await state.db.registerFileText(`${tableName}.json`, convertedJson);
@@ -541,33 +658,43 @@ Select the most relevant datasets (max 3). Return JSON:
                             state.loadedDatasets.push({
                                 url: dataset.url,
                                 tableName,
-                                rowCount
+                                rowCount,
+                                fileUrl
                             });
-                            
-                            addLog(`✓ Loaded ${rowCount} rows into ${tableName}`, 'success');
+                            updateDatasetDisplay();
                         } finally {
                             await conn.close();
                         }
                     } catch (error) {
-                        addLog(`Failed to load dataset: ${error.message}`, 'error');
+                        state.failedDatasets.push({
+                            fileUrl,
+                            error: error.message
+                        });
+                        updateDatasetDisplay();
                     }
                 }
 
                 if (state.loadedDatasets.length === 0) {
-                    showError('Failed to load any datasets');
+                    updateAnswer('**Failed to load any datasets.** All conversions failed. This might be due to:\n\n- Unsupported file formats\n- Docling API rate limits\n- Network issues\n\nPlease try again or rephrase your question.');
+                    showError('All datasets failed to load');
                     setProcessing(false);
                     return;
                 }
 
-                // Step 4: Generate and execute SQL
-                showStatus('Generating SQL query...');
+                // Step 4: Generate and execute SQL queries
+                showStatus('Analyzing loaded data...');
+                updateAnswer('*Generating SQL queries...*');
                 
                 const conn = await state.db.connect();
                 let schemaInfo = '';
                 try {
                     for (const ds of state.loadedDatasets) {
                         const schema = await conn.query(`DESCRIBE ${ds.tableName}`);
-                        schemaInfo += `\nTable ${ds.tableName}:\n${schema.toArray().map(c => `  ${c.column_name}: ${c.column_type}`).join('\n')}\n`;
+                        const cols = schema.toArray();
+                        schemaInfo += `\nTable: ${ds.tableName}\nSource: ${ds.url}\nColumns:\n`;
+                        cols.forEach(c => {
+                            schemaInfo += `  - ${c.column_name}: ${c.column_type}\n`;
+                        });
                     }
                 } finally {
                     await conn.close();
@@ -575,52 +702,87 @@ Select the most relevant datasets (max 3). Return JSON:
 
                 const sqlPrompt = `Question: "${question}"
 
-Available tables:
+Available tables and schemas:
 ${schemaInfo}
 
-Generate SQL to answer the question. Return JSON:
+Generate SQL query to answer the question. Return JSON:
 {
-  "sql": "SELECT ...",
-  "explanation": "what this query does"
-}`;
+  "sql": "SELECT ... FROM dataset_0 ...",
+  "explanation": "what this query does and why"
+}
+
+Important:
+- Use proper SQL syntax for DuckDB
+- Handle NULL values appropriately
+- Use meaningful column names in results
+- Add ORDER BY and LIMIT if appropriate`;
 
                 const sqlResponse = await callClaude(sqlPrompt, '', 'TorontoDataSQL');
                 const sqlData = JSON.parse(sqlResponse.match(/\{[\s\S]*\}/)[0]);
                 
-                addLog(`Generated SQL: ${sqlData.sql}`, 'info');
-                showStatus('Executing query...');
+                showStatus('Executing SQL query...');
                 
                 const queryResult = await executeQuery(sqlData.sql);
-                addLog(`Query returned ${queryResult.length} rows`, 'success');
+                addQuery(sqlData.sql, sqlData.explanation, queryResult);
 
-                // Step 5: Generate answer
+                // Step 5: Generate final answer
                 showStatus('Generating answer...');
                 
                 const answerPrompt = `Question: "${question}"
 
-SQL Query: ${sqlData.sql}
+Datasets used:
+${state.loadedDatasets.map(ds => `- ${ds.url} (${ds.rowCount} rows, table: ${ds.tableName})`).join('\n')}
 
-Results:
+SQL Query executed:
+${sqlData.sql}
+
+Query explanation:
+${sqlData.explanation}
+
+Query results (${queryResult.length} rows):
 ${JSON.stringify(queryResult, null, 2)}
 
-Provide a clear, well-formatted answer with:
-1. Direct answer to the question
-2. Key insights from the data
-3. Any important caveats
+Provide a comprehensive answer that:
+1. **Directly answers the question** based on the data
+2. **Highlights key findings** with specific numbers/facts
+3. **Explains any limitations** (e.g., data quality, date ranges)
+4. **Cites the data sources** used
 
-Use markdown formatting.`;
+Use clear markdown formatting with headers, lists, and emphasis where appropriate.`;
 
                 const answer = await callClaude(answerPrompt, '', 'TorontoDataAnswer');
-                updateAnswer(answer);
+                
+                // Add verification section
+                const verificationSection = `
+
+---
+
+## 📊 Verification Information
+
+**Datasets Used:** ${state.loadedDatasets.length} successfully loaded, ${state.failedDatasets.length} failed
+
+**Loaded:**
+${state.loadedDatasets.map(ds => `- [${ds.tableName}](${ds.url}) - ${ds.rowCount} rows`).join('\n')}
+
+${state.failedDatasets.length > 0 ? `**Failed:**\n${state.failedDatasets.map(ds => `- ${ds.fileUrl.split('/').pop()} - ${ds.error}`).join('\n')}` : ''}
+
+**SQL Query:** ${state.queries.length} quer${state.queries.length === 1 ? 'y' : 'ies'} executed (see "Queries & Results" panel)
+
+**How to verify:**
+1. Click "Copy All" in the Queries & Results panel
+2. Load the datasets manually from the links above
+3. Run the SQL queries in your own DuckDB instance
+4. Compare results with the answer provided`;
+
+                updateAnswer(answer + verificationSection);
                 
                 hideStatus();
                 setProcessing(false);
-                addLog('✓ Analysis complete', 'success');
                 
             } catch (error) {
                 console.error('Error:', error);
                 showError('Error: ' + error.message);
-                addLog(`✗ Error: ${error.message}`, 'error');
+                updateAnswer(`**Error occurred:** ${error.message}\n\nPlease try again or rephrase your question.`);
                 setProcessing(false);
             }
         });
@@ -632,7 +794,7 @@ Use markdown formatting.`;
         });
 
         document.getElementById('clearAllBtn').addEventListener('click', async () => {
-            if (!confirm('Clear all data?')) return;
+            if (!confirm('Clear all loaded data and start over?')) return;
             
             const conn = await state.db.connect();
             try {
@@ -643,8 +805,7 @@ Use markdown formatting.`;
                 await conn.close();
             }
             
-            state.loadedDatasets = [];
-            clearLog();
+            resetState();
             updateAnswer('Your answer will appear here...');
             hideError();
             hideStatus();
